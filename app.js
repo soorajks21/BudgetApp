@@ -11,6 +11,16 @@ var budgetController = (function() {
     this.value = value;
   };
 
+  var calculateTotal = function(type) {
+    var sum = 0;
+    data.allItems[type].forEach(function(curr) {
+      sum += curr.value;
+      console.log(sum);
+    });
+
+    data.total[type] = sum;
+  };
+
   var data = {
     allItems: {
       exp: [],
@@ -19,7 +29,9 @@ var budgetController = (function() {
     total: {
       exp: 0,
       inc: 0
-    }
+    },
+    budget: 0,
+    percentage: -1
   };
   return {
     addItem: function(type, des, val) {
@@ -32,14 +44,36 @@ var budgetController = (function() {
         Id = 0;
       }
 
-      if ((type = "exp")) {
+      if (type == "exp") {
         newItem = new Expenses(Id, des, val);
-      } else if ((type = "inc")) {
+      } else if (type == "inc") {
         newItem = new Income(Id, des, val);
       }
       data.allItems[type].push(newItem);
       return newItem;
     },
+
+    calculateBudget: function() {
+      calculateTotal("inc");
+      calculateTotal("exp");
+
+      data.budget = data.total.inc - data.total.exp;
+
+      if (data.total.inc > 0) {
+        data.percentage = Math.round((data.total.exp / data.total.inc) * 100);
+      } else {
+        data.percentage = -1;
+      }
+    },
+    getBudget: function() {
+      return {
+        budget: data.budget,
+        totalIncome: data.total.inc,
+        totalExpense: data.total.exp,
+        percentage: data.percentage
+      };
+    },
+
     testing: function() {
       console.log(data);
     }
@@ -61,7 +95,7 @@ var UIController = (function() {
       return {
         type: document.querySelector(Domstings.inputType).value, // will be either inc or exp
         description: document.querySelector(Domstings.inputDescripton).value,
-        value: document.querySelector(Domstings.inputValue).value
+        value: parseFloat(document.querySelector(Domstings.inputValue).value)
       };
     },
     getDomstrings: function() {
@@ -99,11 +133,12 @@ var UIController = (function() {
       );
 
       fieldsArray = Array.prototype.slice.call(fields);
+      console.log(fieldsArray);
       fieldsArray.forEach(function(current, index, array) {
-        console.log(current);
         current.value = "";
       });
-      console.log(fields);
+
+      fieldsArray[0].focus();
     }
   };
 })();
@@ -123,13 +158,24 @@ var controller = (function(budgetCtrl, UICtrl) {
     });
   };
 
+  var updateBudget = function() {
+    budgetCtrl.calculateBudget();
+
+    var budget = budgetCtrl.getBudget();
+    console.log("budget", budget);
+  };
+
   var cntrlAddItem = function() {
     var input, newItem;
     input = UICtrl.getInput();
 
-    newItem = budgetCtrl.addItem(input.type, input.description, input.value);
-    UICtrl.addListItem(newItem, input.type);
-    UICtrl.clearField();
+    if (input.description !== "" && !isNaN(input.value) && input.value > 0) {
+      newItem = budgetCtrl.addItem(input.type, input.description, input.value);
+      UICtrl.addListItem(newItem, input.type);
+      UICtrl.clearField();
+      updateBudget();
+    }
+
     //   console.log(input);
   };
 
